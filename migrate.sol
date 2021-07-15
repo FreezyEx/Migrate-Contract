@@ -15,7 +15,7 @@ abstract contract Context {
 
 
 interface IERC20 {
-
+    function decimals() external view returns (uint256);
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
     function transfer(address recipient, uint256 amount) external returns (bool);
@@ -144,13 +144,15 @@ contract Migrate is ReentrancyGuard, Context, Ownable{
     
     IERC20 public tokenV2;
     IERC20 public tokenV1;
+    uint256 public rate;
     bool public migrationStarted;
     
     event MigrateToV2(address addr, uint256 amount);
     
-    constructor(IERC20 tokenAddressV2, IERC20 tokenAddressV1) {
+    constructor(IERC20 tokenAddressV1, IERC20 tokenAddressV2, uint256 _rate) {
         tokenV2 = tokenAddressV2;
         tokenV1 = tokenAddressV1;
+        rate = _rate;
     }
     
     function startMigration() external onlyOwner{
@@ -161,22 +163,25 @@ contract Migrate is ReentrancyGuard, Context, Ownable{
         migrationStarted = false;
     }
     
-    function setTokenV1andV2(IERC20 tokenV1addr, IERC20 tokenV2addr) external onlyOwner{
+    function setTokenV1andV2(IERC20 tokenV1addr, IERC20 tokenV2addr, uint256 _rate) external onlyOwner{
         tokenV1 = tokenV1addr;
         tokenV2 = tokenV2addr;
+        rate = _rate;
     }
     
     function withdrawTokens(uint256 amount) external onlyOwner{
         tokenV2.transfer(msg.sender, amount);
     }
     
-    function migrateToV2() public {
+    
+    function migrateToV2(uint256 v1amount) public {
         require(migrationStarted == true, 'Migration not started yet');
+        uint256 amount = v1amount * tokenV1.decimals();
         uint256 userV1Balance = tokenV1.balanceOf(msg.sender);
-        require(userV1Balance > 0, 'You must hold V1 tokens to migrate');
-        require(tokenV2.balanceOf(address(this)) >= userV1Balance, 'No enough V2 liquidity');
-        uint256 amtToMigrate = userV1Balance;
-        tokenV1.transferFrom(msg.sender, deadWallet, userV1Balance);
+        require(userV1Balance >= amount, 'You must hold V1 tokens to migrate');
+        uint256 amtToMigrate = amount.div(rate);
+        require(tokenV2.balanceOf(address(this)) >= amtToMigrate, 'No enough V2 liquidity');
+        tokenV1.transferFrom(msg.sender, deadWallet, amount);
         tokenV2.transfer(msg.sender, amtToMigrate);
         emit MigrateToV2(msg.sender, amtToMigrate);
     }
