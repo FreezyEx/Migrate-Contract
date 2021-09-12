@@ -84,7 +84,6 @@ contract Ownable is Context {
 }
 
 contract Migrate is ReentrancyGuard, Context, Ownable{
-    using SafeMath for uint256;
 
     // we want to track who has already migrated to V2
     mapping(address => bool) private claimed;
@@ -99,9 +98,9 @@ contract Migrate is ReentrancyGuard, Context, Ownable{
     /// @notice Emits event every time someone migrates
     event MigrateToV2(address addr, uint256 amount);
 
-    /// @param tokenV1addr The address of old version
-    /// @param tokenV2addr The address of new version
-    /// @param rate The rate between old and new version
+    /// @param tokenAddressV1 The address of old version
+    /// @param tokenAddressV2 The address of new version
+    /// @param _rate The rate between old and new version
     constructor(IERC20 tokenAddressV1, IERC20 tokenAddressV2, uint256 _rate) {
         tokenV2 = tokenAddressV2;
         tokenV1 = tokenAddressV1;
@@ -123,7 +122,7 @@ contract Migrate is ReentrancyGuard, Context, Ownable{
     /// @notice Updates "tokenV1", "tokenV2" and the "rate"
     /// @param tokenV1addr The address of old version
     /// @param tokenV2addr The address of new version
-    /// @param rate The rate between old and new version
+    /// @param _rate The rate between old and new version
     function setTokenV1andV2(IERC20 tokenV1addr, IERC20 tokenV2addr, uint256 _rate) external onlyOwner{
         tokenV1 = tokenV1addr;
         tokenV2 = tokenV2addr;
@@ -146,7 +145,7 @@ contract Migrate is ReentrancyGuard, Context, Ownable{
         uint256 amount = v1amount * 10 ** tokenV1.decimals();
         uint256 userV1Balance = tokenV1.balanceOf(msg.sender);
         require(userV1Balance >= amount, 'You must hold V1 tokens to migrate');
-        uint256 amtToMigrate = amount.mul(rate).div(10);
+        uint256 amtToMigrate = amount * rate;
         require(tokenV2.balanceOf(address(this)) >= amtToMigrate, 'No enough V2 liquidity');
         tokenV1.transferFrom(msg.sender, deadWallet, amount);
         tokenV2.transfer(msg.sender, amtToMigrate);
