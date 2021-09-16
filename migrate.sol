@@ -145,7 +145,7 @@ contract Migrate is ReentrancyGuard, Context, Ownable{
         uint256 amount = v1amount * 10 ** tokenV1.decimals();
         uint256 userV1Balance = tokenV1.balanceOf(msg.sender);
         require(userV1Balance >= amount, 'You must hold V1 tokens to migrate');
-        uint256 amtToMigrate = amount * rate;
+        uint256 amtToMigrate = v1amount * rate * 10 ** tokenV2.decimals();
         require(tokenV2.balanceOf(address(this)) >= amtToMigrate, 'No enough V2 liquidity');
         tokenV1.transferFrom(msg.sender, deadWallet, amount);
         tokenV2.transfer(msg.sender, amtToMigrate);
